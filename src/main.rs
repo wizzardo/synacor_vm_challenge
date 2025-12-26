@@ -87,7 +87,7 @@ impl Opcode {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
-    let mut data: Vec<u8> = fs::read("challenge.bin")?;
+    let data: Vec<u8> = fs::read("challenge.bin")?;
 
 
     // let mut numbers = vec![2, 3, 5, 7, 9];
@@ -364,7 +364,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
                 if debug {
                     println!("Call {value} from {p}");
                 }
-                stack.push((p as u16));
+                stack.push(p as u16);
                 p = value as usize;
             }
             Opcode::Ret => {
@@ -420,10 +420,10 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
 
                 registers[a] = input.pop().unwrap() as u16;
             }
-            _ => {
-                println!("cannot handle opcode {:?} yet", opcode);
-                break;
-            }
+            // _ => {
+            //     println!("cannot handle opcode {:?} yet", opcode);
+            //     break;
+            // }
         }
     }
 
