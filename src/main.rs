@@ -118,9 +118,297 @@ fn _6049(mut r0: u16, mut r1: u16, mut r7: u16, cache: &mut HashMap<u64, u16>) -
     }
 }
 
+enum Direction {
+    North,
+    East,
+    South,
+    West,
+}
+
+impl Direction {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Direction::North => "north",
+            Direction::East => "east",
+            Direction::South => "south",
+            Direction::West => "west",
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+enum Operation {
+    Add,
+    Multiply,
+    Subtract,
+}
+
+impl Operation {
+    fn execute(&self, a: i32, b: i32) -> i32 {
+        match self {
+            Operation::Add => a + b,
+            Operation::Multiply => a * b,
+            Operation::Subtract => a - b,
+        }
+    }
+}
+
+enum ValueOrOperation {
+    Value(i32),
+    Operation(Operation),
+}
 
 fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     let data: Vec<u8> = fs::read("challenge.bin")?;
+
+    // {
+    //     let grid = vec![
+    //         vec![
+    //             ValueOrOperation::Operation(Operation::Multiply),
+    //             ValueOrOperation::Value(8),
+    //             ValueOrOperation::Operation(Operation::Subtract),
+    //             ValueOrOperation::Value(1),
+    //         ],
+    //         vec![
+    //             ValueOrOperation::Value(4),
+    //             ValueOrOperation::Operation(Operation::Multiply),
+    //             ValueOrOperation::Value(11),
+    //             ValueOrOperation::Operation(Operation::Multiply),
+    //         ],
+    //         vec![
+    //             ValueOrOperation::Operation(Operation::Add),
+    //             ValueOrOperation::Value(4),
+    //             ValueOrOperation::Operation(Operation::Subtract),
+    //             ValueOrOperation::Value(18),
+    //         ],
+    //         vec![
+    //             ValueOrOperation::Value(0),
+    //             ValueOrOperation::Operation(Operation::Subtract),
+    //             ValueOrOperation::Value(9),
+    //             ValueOrOperation::Operation(Operation::Multiply),
+    //         ],
+    //     ];
+    //     let value = 22;
+    //     let target = 30;
+    //     let limit = 12;
+    //
+    //     fn find_path(
+    //         current_path: Vec<&'static str>,
+    //         position: (usize, usize),
+    //         value: i32,
+    //         grid: &Vec<Vec<ValueOrOperation>>,
+    //         target_position: (usize, usize),
+    //         target_value: i32,
+    //         steps_limit: u32,
+    //         pending_operation: Option<Operation>,
+    //     ) -> Option<Vec<&'static str>> {
+    //         if position == target_position && value == target_value {
+    //             return Some(current_path);
+    //         }
+    //         if current_path.len() >= steps_limit as usize {
+    //             return None;
+    //         }
+    //         if position == target_position && value != target_value {
+    //             return None;
+    //         }
+    //
+    //         let mut result: Option<Vec<&'static str>> = None;
+    //
+    //         if position.0 > 0 {
+    //             let next_position = (position.0 - 1, position.1);
+    //             let mut vec = current_path.clone();
+    //             vec.push("north");
+    //             if let Some(path) = match &grid[next_position.0][next_position.1] {
+    //                 ValueOrOperation::Value(v) => {
+    //                     let value = pending_operation.unwrap().execute(value, *v);
+    //                     if value > 0 {
+    //                         find_path(
+    //                             vec,
+    //                             next_position,
+    //                             value,
+    //                             grid,
+    //                             target_position,
+    //                             target_value,
+    //                             steps_limit,
+    //                             None,
+    //                         )
+    //                     } else {
+    //                         None
+    //                     }
+    //                 }
+    //                 ValueOrOperation::Operation(op) => find_path(
+    //                     vec,
+    //                     next_position,
+    //                     value,
+    //                     grid,
+    //                     target_position,
+    //                     target_value,
+    //                     steps_limit,
+    //                     Some(*op),
+    //                 ),
+    //             } {
+    //                 match &result {
+    //                     None => {
+    //                         result = Some(path);
+    //                     }
+    //                     Some(p) => {
+    //                         if p.len() > path.len() {
+    //                             result = Some(path);
+    //                         }
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //
+    //         if position.0 < 3 {
+    //             let next_position = (position.0 + 1, position.1);
+    //             if next_position != (3, 0) {
+    //                 let mut vec = current_path.clone();
+    //                 vec.push("south");
+    //                 if let Some(path) = match &grid[next_position.0][next_position.1] {
+    //                     ValueOrOperation::Value(v) => {
+    //                         let value = pending_operation.unwrap().execute(value, *v);
+    //                         if value > 0 {
+    //                             find_path(
+    //                                 vec,
+    //                                 next_position,
+    //                                 value,
+    //                                 grid,
+    //                                 target_position,
+    //                                 target_value,
+    //                                 steps_limit,
+    //                                 None,
+    //                             )
+    //                         } else {
+    //                             None
+    //                         }
+    //                     }
+    //                     ValueOrOperation::Operation(op) => find_path(
+    //                         vec,
+    //                         next_position,
+    //                         value,
+    //                         grid,
+    //                         target_position,
+    //                         target_value,
+    //                         steps_limit,
+    //                         Some(*op),
+    //                     ),
+    //                 } {
+    //                     match &result {
+    //                         None => {
+    //                             result = Some(path);
+    //                         }
+    //                         Some(p) => {
+    //                             if p.len() > path.len() {
+    //                                 result = Some(path);
+    //                             }
+    //                         }
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //
+    //         if position.1 > 0 {
+    //             let next_position = (position.0, position.1 - 1);
+    //             if next_position != (3, 0) {
+    //                 let mut vec = current_path.clone();
+    //                 vec.push("west");
+    //                 if let Some(path) = match &grid[next_position.0][next_position.1] {
+    //                     ValueOrOperation::Value(v) => {
+    //                         let value = pending_operation.unwrap().execute(value, *v);
+    //                         if value > 0 {
+    //                             find_path(
+    //                                 vec,
+    //                                 next_position,
+    //                                 value,
+    //                                 grid,
+    //                                 target_position,
+    //                                 target_value,
+    //                                 steps_limit,
+    //                                 None,
+    //                             )
+    //                         } else {
+    //                             None
+    //                         }
+    //                     }
+    //                     ValueOrOperation::Operation(op) => find_path(
+    //                         vec,
+    //                         next_position,
+    //                         value,
+    //                         grid,
+    //                         target_position,
+    //                         target_value,
+    //                         steps_limit,
+    //                         Some(*op),
+    //                     ),
+    //                 } {
+    //                     match &result {
+    //                         None => {
+    //                             result = Some(path);
+    //                         }
+    //                         Some(p) => {
+    //                             if p.len() > path.len() {
+    //                                 result = Some(path);
+    //                             }
+    //                         }
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //
+    //         if position.1 < 3 {
+    //             let next_position = (position.0, position.1 + 1);
+    //             let mut vec = current_path.clone();
+    //             vec.push("east");
+    //             if let Some(path) = match &grid[next_position.0][next_position.1] {
+    //                 ValueOrOperation::Value(v) => {
+    //                     let value = pending_operation.unwrap().execute(value, *v);
+    //                     if value > 0 {
+    //                         find_path(
+    //                             vec,
+    //                             next_position,
+    //                             value,
+    //                             grid,
+    //                             target_position,
+    //                             target_value,
+    //                             steps_limit,
+    //                             None,
+    //                         )
+    //                     } else {
+    //                         None
+    //                     }
+    //                 }
+    //                 ValueOrOperation::Operation(op) => find_path(
+    //                     vec,
+    //                     next_position,
+    //                     value,
+    //                     grid,
+    //                     target_position,
+    //                     target_value,
+    //                     steps_limit,
+    //                     Some(*op),
+    //                 ),
+    //             } {
+    //                 match &result {
+    //                     None => {
+    //                         result = Some(path);
+    //                     }
+    //                     Some(p) => {
+    //                         if p.len() > path.len() {
+    //                             result = Some(path);
+    //                         }
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //
+    //         result
+    //     }
+    //
+    //     let path = find_path(vec![], (3, 0), value, &grid, (0, 3), target, limit, None);
+    //     println!("path: {:?}", path);
+    //     return Ok(())
+    // }
 
     // {
     //     let mut cache: HashMap<u64, u16> = HashMap::new();
@@ -236,8 +524,14 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         "west",
         "north",
         "north",
-
         "take orb",
+
+        "north", "east", "east", "north", "west", "south", "east", "east", "west", "north", "north", "east",
+
+        "vault",
+        "look mirror",
+        "take mirror",
+        "use mirror",
     ];
     commands_after_teleport.reverse();
 
