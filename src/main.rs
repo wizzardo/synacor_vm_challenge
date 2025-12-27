@@ -1,5 +1,8 @@
+use crate::renderer_c::render_c_to_string;
+use std::collections::HashMap;
 use std::fs;
 use std::ops::Not;
+use std::time::Instant;
 
 mod renderer_c;
 
@@ -86,9 +89,52 @@ impl Opcode {
     }
 }
 
+fn _6049(mut r0: u16, mut r1: u16, mut r7: u16, cache: &mut HashMap<u64, u16>) -> u16 {
+    if let Some(r) = cache.get(&((r0 as u64) * 32768 + r1 as u64)) {
+        return *r;
+    }
+    if r0 != 0 {
+        if r1 != 0 {
+            r1 = (r1 + 32767) & 32767;
+            let r = _6049(r0, r1, r7, cache);
+            cache.insert((r0 as u64) * 32768 + r1 as u64, r);
+            r1 = r;
+
+            r0 = (r0 + 32767) & 32767;
+            let r = _6049(r0, r1, r7, cache);
+            cache.insert((r0 as u64) * 32768 + r1 as u64, r);
+            return r;
+        } else {
+            r0 = (r0 + 32767) & 32767;
+            r1 = r7;
+            let r = _6049(r0, r1, r7, cache);
+            cache.insert((r0 as u64) * 32768 + r1 as u64, r);
+            return r;
+        }
+    } else {
+        let r = (r1 + 1) & 32767;
+        cache.insert((r0 as u64) * 32768 + r1 as u64, r);
+        return r;
+    }
+}
+
+
 fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     let data: Vec<u8> = fs::read("challenge.bin")?;
 
+    // {
+    //     let mut cache: HashMap<u64, u16> = HashMap::new();
+    //     let now = Instant::now();
+    //     for i in 1..32768 {
+    //         let r = _6049(4, 1, i, &mut cache);
+    //         println!("{:?} {} {}s elapsed", i, r, now.elapsed().as_secs());
+    //         if r == 6 {
+    //             break; //25734
+    //         }
+    //         cache.clear();
+    //     }
+    //     return Ok(());
+    // }
 
     // let mut numbers = vec![2, 3, 5, 7, 9];
     // loop {
@@ -106,11 +152,17 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         code_u16.push(read_u16(&data[i * 2..]));
     }
 
+    // renderer_c::render(&code_u16, "dump.c")?;
+    // if true {
+    //     return Ok(());
+    // }
+
     let mem = code_u16.as_mut_slice();
     let mut p = 0;
     let mut registers = [0u16; 8];
     let mut stack: Vec<u16> = Vec::new();
     let mut debug = false;
+    let mut debug_r7 = false;
     let mut input: Vec<char> = Vec::new();
 
     let mut input_commands = vec![
@@ -171,10 +223,48 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
 
     input_commands.reverse();
 
+    let mut commands_after_teleport = vec![
+        "north",
+        "north",
+        "north",
+        "north",
+        "north",
+        "north",
+        "north",
+        "east",
+        "take journal",
+        "west",
+        "north",
+        "north",
+
+        "take orb",
+    ];
+    commands_after_teleport.reverse();
+
     loop {
         let code = mem[p];
         let opcode = Opcode::of(code);
         // println!("{code} {opcode:?}");
+
+        // if p == 5513 {
+        //     println!("stop here 5513");
+        // }
+        // if p == 6064 {
+        //     // println!("");
+        //     // println!("stop here 6064");
+        //
+        //     // r0 = 4;
+        //     // r1 = 1;
+        //     // call(6049);
+        //     // r1 = (r0 == 6) ? 1 : 0;
+        //     // if (r1 == 0)  goto _5601;
+        //     // println!("{}", render_c_to_string(&mem, p - 50, p + 30).unwrap());
+        //     // if !debug_r7 {
+        //     //     break;
+        //     // }
+        //     debug_r7 = false;
+        // }
+
         p += 1;
         match opcode {
             Opcode::Noop => {}
@@ -403,16 +493,31 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
                         input = c.chars().collect();
                         input.push('\n');
                     } else {
-                        let _input_length = std::io::stdin()
-                            .read_line(&mut input_string)
-                            .expect("Failed to read input");
-                        // println!("Input: {input_length} - {input} to {a}");
-                        if input_string.starts_with("debug=true") {
-                            debug = true;
-                        }
-                        // registers[a] = input.chars().next().unwrap() as u16;
+                        if !debug_r7 {
+                            // disable check
+                            mem[5508] = 21;
+                            mem[5509] = 21;
+                            mem[5510] = 1;
+                            mem[5511] = 32768;
+                            mem[5512] = 6;
 
-                        input = input_string.chars().collect();
+                            // renderer_c::render(&mem, "dump2.c")?;
+                            debug_r7 = true;
+                            registers[7] = 25734;
+
+                            input = "use teleporter\n".chars().collect();
+                            input_commands = commands_after_teleport.clone();
+                        } else {
+                            let _input_length = std::io::stdin()
+                                .read_line(&mut input_string)
+                                .expect("Failed to read input");
+                            // println!("Input: {input_length} - {input} to {a}");
+                            if input_string.starts_with("debug=true") {
+                                debug = true;
+                            }
+
+                            input = input_string.chars().collect();
+                        }
                     }
 
                     input.reverse()
@@ -420,10 +525,6 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
 
                 registers[a] = input.pop().unwrap() as u16;
             }
-            // _ => {
-            //     println!("cannot handle opcode {:?} yet", opcode);
-            //     break;
-            // }
         }
     }
 

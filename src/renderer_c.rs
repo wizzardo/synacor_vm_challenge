@@ -120,11 +120,12 @@ pub fn render_c_to_string(
     data: &[u16],
     from: usize,
     to: usize,
-    writer: &mut String,
-) -> Result<(), std::fmt::Error> {
+) -> Result<String, std::fmt::Error> {
     let mut all_labels = vec![];
     let mut labels_to_print = vec![];
-    render_c_to_string_extended(data, from, to, writer, &mut all_labels, &mut labels_to_print)
+    let mut string_content = String::new();
+    render_c_to_string_extended(data, from, to, &mut string_content, &mut all_labels, &mut labels_to_print)?;
+    Ok(string_content)
 }
 
 fn render_c_to_string_extended(
@@ -367,6 +368,7 @@ fn render_c_to_string_extended(
                     continue;
                 }
                 let a = crate::to_index(a);
+                pointer += 1;
                 // writeln!(writer, "  r{a} = stack[--stack_pointer];")?;
                 writeln!(writer, "  r{a} = pop_stack();")?;
             }
